@@ -206,10 +206,11 @@ impl Table {
 }
 
 /// A trait to implement the behavior for sending requests, often your "IO" layer
+#[async_trait::async_trait(?Send)]
 pub trait Transport {
     /// Accepts a signed `http::Request<Vec<u8>>` and returns a tuple
     /// representing a response's HTTP status code and body
-    fn send(
+    async fn send(
         &self,
         signed: Request,
     ) -> Result<(u16, String), Box<dyn Error>>;
@@ -323,12 +324,12 @@ impl DB {
     }
 
     /// Gets a value by its key
-    pub fn get(
+    pub async fn get(
         &self,
         key: impl AsRef<str>,
     ) -> Result<Option<String>, Box<dyn Error>> {
         let Table { value_name, .. } = &self.table_info;
-        match self.transport.send(self.get_item_req(key)?)? {
+        match self.transport.send(self.get_item_req(key)?).await? {
             (200, body) if body.as_str() == "{}" => Ok(None), // not found
             (200, body) => Ok(serde_json::from_str::<GetItemOutput>(&body)?
                 .item
@@ -342,12 +343,12 @@ impl DB {
     }
 
     /// Sets a value for a given key
-    pub fn set(
+    pub async fn set(
         &self,
         key: impl AsRef<str>,
         value: impl AsRef<str>,
     ) -> Result<(), Box<dyn Error>> {
-        match self.transport.send(self.put_item_req(key, value)?)? {
+        match self.transport.send(self.put_item_req(key, value)?).await? {
             (200, _) => Ok(()),
             (_, body) => Err(Box::new(serde_json::from_str::<AWSError>(&body)?)),
         }
@@ -590,8 +591,9 @@ impl DB {
 /// Provides a `Transport` implementation for a constantized response.
 pub struct Const(pub u16, pub String);
 
+#[async_trait::async_trait(?Send)]
 impl Transport for Const {
-    fn send(
+    async fn send(
         &self,
         _: Request,
     ) -> Result<(u16, String), Box<dyn Error>> {

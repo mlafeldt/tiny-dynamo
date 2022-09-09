@@ -23,6 +23,7 @@ hmac = "0.11"
 chrono = "0.4"
 hex = "0.4"
 fastly = { version = "0.7", optional = true }
+async-trait = "0.1"
 
 [dev-dependencies]
 criterion = { version = "0.3", features = ["html_reports"] }

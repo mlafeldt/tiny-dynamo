@@ -1,5 +1,5 @@
 use crate::{Request, Transport};
-use reqwest::blocking::Client;
+use reqwest::Client;
 use std::error::Error;
 
 pub struct Reqwest {
@@ -20,8 +20,9 @@ impl Reqwest {
     }
 }
 
+#[async_trait::async_trait(?Send)]
 impl Transport for Reqwest {
-    fn send(
+    async fn send(
         &self,
         signed: Request,
     ) -> Result<(u16, String), Box<dyn Error>> {
@@ -30,7 +31,8 @@ impl Transport for Reqwest {
             .post(signed.uri().to_string())
             .headers(signed.headers().clone())
             .body(signed.body().clone())
-            .send()?;
-        Ok((resp.status().as_u16(), resp.text()?))
+            .send()
+            .await?;
+        Ok((resp.status().as_u16(), resp.text().await?))
     }
 }
